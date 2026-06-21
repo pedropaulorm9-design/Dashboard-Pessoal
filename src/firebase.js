@@ -1,6 +1,10 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import {
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from 'firebase/firestore';
 
 // Essas chaves vêm do seu projeto no Firebase Console.
 // Configure-as no arquivo .env (veja .env.example) ou nas variáveis
@@ -17,5 +21,15 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+
+// Habilita cache local persistente: os dados do Firestore ficam salvos
+// no próprio dispositivo (IndexedDB), então o app continua mostrando
+// e aceitando alterações mesmo sem internet. Quando a conexão volta,
+// tudo sincroniza automaticamente com o servidor e com os outros
+// dispositivos logados na mesma conta.
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager(),
+  }),
+});
 export default app;

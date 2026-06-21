@@ -6,6 +6,7 @@ import Login from './components/Login';
 import Agenda from './pages/Agenda';
 import Financeiro from './pages/Financeiro';
 import Estudos from './pages/Estudos';
+import Configuracoes from './pages/Configuracoes';
 
 export default function App() {
   return (
@@ -19,6 +20,7 @@ export default function App() {
               <Route path="/agenda" element={<Agenda />} />
               <Route path="/financeiro" element={<Financeiro />} />
               <Route path="/estudos" element={<Estudos />} />
+              <Route path="/configuracoes" element={<Configuracoes />} />
             </Route>
 
             <Route path="/" element={<Navigate to="/agenda" replace />} />

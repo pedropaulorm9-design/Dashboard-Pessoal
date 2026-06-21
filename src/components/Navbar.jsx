@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Calendar, Wallet, BookOpen, Sun, Moon, Menu, X, LogOut } from 'lucide-react';
+import { Calendar, Wallet, BookOpen, Sun, Moon, Menu, X, LogOut, Settings } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -49,6 +49,13 @@ export default function Navbar() {
           <button className="icon-btn" onClick={toggleTheme} aria-label="Alternar tema claro/escuro">
             {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
           </button>
+          <NavLink
+            to="/configuracoes"
+            className={({ isActive }) => `icon-btn settings-link ${isActive ? 'active' : ''}`}
+            aria-label="Configurações"
+          >
+            <Settings size={16} />
+          </NavLink>
           <button className="text-btn" onClick={handleLogout}>
             Sair
           </button>
@@ -64,6 +71,14 @@ export default function Navbar() {
 
       <div className={`mobile-menu ${menuOpen ? 'open' : ''}`}>
         {links.map((l) => renderLink(l, () => setMenuOpen(false)))}
+        <NavLink
+          to="/configuracoes"
+          onClick={() => setMenuOpen(false)}
+          className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+        >
+          <Settings size={15} />
+          Configurações
+        </NavLink>
         <button
           className="nav-link"
           onClick={() => {

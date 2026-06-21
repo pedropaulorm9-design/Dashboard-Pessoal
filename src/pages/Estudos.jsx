@@ -1,7 +1,11 @@
-import { useState } from 'react';
-import { BookOpen, Plus, Trash2, Clock } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { BookOpen, Plus, Trash2, Clock, Flame } from 'lucide-react';
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 import { useFirestoreCollection } from '../hooks/useFirestoreCollection';
+import { useStudyStreak } from '../hooks/useStudyStreak';
+
+const SUBJECT_COLORS = ['#7aa2d4', '#7fb88a', '#d4a95e', '#b98fd4', '#d4707a', '#6fc2c9', '#c9c46f'];
 
 function formatMinutes(mins) {
   const h = Math.floor(mins / 60);
@@ -17,6 +21,7 @@ export default function Estudos() {
     user.uid,
     'subjects'
   );
+  const { streak, registerStudyToday } = useStudyStreak(user.uid);
 
   const [newSubject, setNewSubject] = useState({ name: '', goalHours: '' });
   const [studyLog, setStudyLog] = useState({ subjectId: '', minutes: '' });
@@ -51,10 +56,16 @@ export default function Estudos() {
     const subject = subjects.find((s) => s.id === studyLog.subjectId);
     if (!subject || isNaN(mins) || mins <= 0) return;
     updateItem(subject.id, { loggedMinutes: (subject.loggedMinutes || 0) + mins });
+    registerStudyToday();
     setStudyLog({ ...studyLog, minutes: '' });
   }
 
   const totalLogged = subjects.reduce((acc, s) => acc + (s.loggedMinutes || 0), 0);
+
+  const pieData = useMemo(
+    () => subjects.filter((s) => (s.loggedMinutes || 0) > 0).map((s) => ({ name: s.name, value: s.loggedMinutes })),
+    [subjects]
+  );
 
   return (
     <main className="page">
@@ -65,6 +76,13 @@ export default function Estudos() {
           <h2 className="page-title">Matérias</h2>
         </div>
       </div>
+
+      {streak > 0 && (
+        <div className="streak-badge" style={{ marginBottom: 14 }}>
+          <Flame size={14} color="var(--accent-estudos)" />
+          {streak} dia{streak !== 1 ? 's' : ''} seguido{streak !== 1 ? 's' : ''} estudando
+        </div>
+      )}
 
       <div className="card accent-estudos">
         <div className="list">
@@ -166,6 +184,25 @@ export default function Estudos() {
             <button className="add-btn" onClick={handleLogStudy} aria-label="Registrar sessão de estudo">
               <Clock size={15} />
             </button>
+          </div>
+        </div>
+      )}
+
+      {pieData.length > 0 && (
+        <div className="card accent-estudos" style={{ marginTop: 16 }}>
+          <span className="page-comment">// o que você mais estuda</span>
+          <div className="chart-wrap">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={45} outerRadius={75}>
+                  {pieData.map((_, i) => (
+                    <Cell key={i} fill={SUBJECT_COLORS[i % SUBJECT_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value) => formatMinutes(value)} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+              </PieChart>
+            </ResponsiveContainer>
           </div>
         </div>
       )}

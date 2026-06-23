@@ -1,18 +1,24 @@
-import { useState } from 'react';
-import { Settings, Download, AlertTriangle } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { Settings, Download, AlertTriangle, Camera } from 'lucide-react';
 import { collection, deleteDoc, doc, getDoc, getDocs } from 'firebase/firestore';
+import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { useAuth } from '../contexts/AuthContext';
 import { useUserPreferences } from '../hooks/useUserPreferences';
-import { db } from '../firebase';
+import { db, storage } from '../firebase';
+import Avatar from '../components/Avatar';
 
-const COLLECTIONS = ['tasks', 'transactions', 'subjects'];
+const COLLECTIONS = ['tasks', 'transactions', 'subjects', 'recurringTransactions', 'studyDays'];
 
 export default function Configuracoes() {
-  const { user, updateDisplayName, changePassword, reauthenticate, deleteAccountWithPassword } = useAuth();
+  const { user, updateDisplayName, updatePhotoURL, changePassword, reauthenticate, deleteAccountWithPassword } = useAuth();
   const { preferences, updatePreferences } = useUserPreferences(user.uid);
 
   const [name, setName] = useState(user.displayName || '');
   const [nameMsg, setNameMsg] = useState('');
+
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoError, setPhotoError] = useState('');
+  const fileInputRef = useRef(null);
 
   const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' });
   const [pwMsg, setPwMsg] = useState('');
@@ -29,6 +35,33 @@ export default function Configuracoes() {
     setNameMsg('');
     await updateDisplayName(name.trim());
     setNameMsg('Nome atualizado.');
+  }
+
+  async function handlePhotoChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoError('');
+
+    if (!file.type.startsWith('image/')) {
+      setPhotoError('Selecione um arquivo de imagem.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setPhotoError('Imagem muito grande (máximo 5MB).');
+      return;
+    }
+
+    setPhotoUploading(true);
+    try {
+      const fileRef = ref(storage, `avatars/${user.uid}/profile`);
+      await uploadBytes(fileRef, file);
+      const url = await getDownloadURL(fileRef);
+      await updatePhotoURL(url);
+    } catch {
+      setPhotoError('Não foi possível enviar a foto. Confirme se o Storage está habilitado no Firebase.');
+    } finally {
+      setPhotoUploading(false);
+    }
   }
 
   async function handleChangePassword() {
@@ -97,6 +130,8 @@ export default function Configuracoes() {
       // estiver errada, nada é perdido.
       await reauthenticate(dangerPassword);
 
+      await deleteObject(ref(storage, `avatars/${user.uid}/profile`)).catch(() => {});
+
       for (const colName of COLLECTIONS) {
         const snap = await getDocs(collection(db, 'users', user.uid, colName));
         await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
@@ -129,6 +164,26 @@ export default function Configuracoes() {
       {/* Perfil */}
       <div className="card" style={{ marginBottom: 16 }}>
         <span className="settings-section-title">Perfil</span>
+
+        <div className="settings-actions" style={{ alignItems: 'center' }}>
+          <Avatar user={user} size={64} />
+          <div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              onChange={handlePhotoChange}
+            />
+            <button className="btn" onClick={() => fileInputRef.current?.click()} disabled={photoUploading}>
+              <Camera size={14} style={{ marginRight: 6, verticalAlign: 'text-bottom' }} />
+              {photoUploading ? 'Enviando...' : 'Trocar foto'}
+            </button>
+          </div>
+        </div>
+        {photoError && <span className="auth-error">{photoError}</span>}
+
+        <hr className="settings-divider" />
 
         <div className="settings-row">
           <label>Nome de exibição</label>

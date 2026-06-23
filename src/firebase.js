@@ -5,6 +5,7 @@ import {
   persistentLocalCache,
   persistentMultipleTabManager,
 } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
 // Essas chaves vêm do seu projeto no Firebase Console.
 // Configure-as no arquivo .env (veja .env.example) ou nas variáveis
@@ -32,4 +33,5 @@ export const db = initializeFirestore(app, {
     tabManager: persistentMultipleTabManager(),
   }),
 });
+export const storage = getStorage(app);
 export default app;

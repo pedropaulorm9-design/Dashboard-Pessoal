@@ -43,8 +43,23 @@ export function AuthProvider({ children }) {
     return reauthenticateWithCredential(auth.currentUser, credential);
   }
 
-  function updateDisplayName(name) {
-    return updateProfile(auth.currentUser, { displayName: name });
+  // O onAuthStateChanged só dispara em login/logout — updateProfile não
+  // atualiza o objeto `user` do contexto por conta própria. Por isso,
+  // depois de qualquer mudança de perfil, recarregamos e forçamos uma
+  // nova referência pra React perceber a mudança.
+  async function refreshUser() {
+    await auth.currentUser.reload();
+    setUser({ ...auth.currentUser });
+  }
+
+  async function updateDisplayName(name) {
+    await updateProfile(auth.currentUser, { displayName: name });
+    await refreshUser();
+  }
+
+  async function updatePhotoURL(url) {
+    await updateProfile(auth.currentUser, { photoURL: url });
+    await refreshUser();
   }
 
   async function changePassword(currentPassword, newPassword) {
@@ -67,6 +82,7 @@ export function AuthProvider({ children }) {
         logout,
         reauthenticate,
         updateDisplayName,
+        updatePhotoURL,
         changePassword,
         deleteAccountWithPassword,
       }}

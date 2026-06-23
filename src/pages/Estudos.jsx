@@ -4,6 +4,10 @@ import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recha
 import { useAuth } from '../contexts/AuthContext';
 import { useFirestoreCollection } from '../hooks/useFirestoreCollection';
 import { useStudyStreak } from '../hooks/useStudyStreak';
+import { useStudyDays } from '../hooks/useStudyDays';
+import { toKey } from '../utils/dateKey';
+import PomodoroTimer from '../components/PomodoroTimer';
+import StudyHeatmap from '../components/StudyHeatmap';
 
 const SUBJECT_COLORS = ['#7aa2d4', '#7fb88a', '#d4a95e', '#b98fd4', '#d4707a', '#6fc2c9', '#c9c46f'];
 
@@ -22,6 +26,7 @@ export default function Estudos() {
     'subjects'
   );
   const { streak, registerStudyToday } = useStudyStreak(user.uid);
+  const { days, addMinutes } = useStudyDays(user.uid);
 
   const [newSubject, setNewSubject] = useState({ name: '', goalHours: '' });
   const [studyLog, setStudyLog] = useState({ subjectId: '', minutes: '' });
@@ -51,12 +56,20 @@ export default function Estudos() {
     });
   }
 
+  // usada tanto pelo registro manual quanto pelo Pomodoro
+  function logStudySession(subjectId, minutes) {
+    const subject = subjects.find((s) => s.id === subjectId);
+    if (!subject) return;
+    updateItem(subject.id, { loggedMinutes: (subject.loggedMinutes || 0) + minutes });
+    registerStudyToday();
+    addMinutes(toKey(new Date()), minutes);
+  }
+
   function handleLogStudy() {
     const mins = parseInt(studyLog.minutes, 10);
-    const subject = subjects.find((s) => s.id === studyLog.subjectId);
-    if (!subject || isNaN(mins) || mins <= 0) return;
-    updateItem(subject.id, { loggedMinutes: (subject.loggedMinutes || 0) + mins });
-    registerStudyToday();
+    const subjectId = studyLog.subjectId || subjects[0]?.id;
+    if (!subjectId || isNaN(mins) || mins <= 0) return;
+    logStudySession(subjectId, mins);
     setStudyLog({ ...studyLog, minutes: '' });
   }
 
@@ -83,6 +96,13 @@ export default function Estudos() {
         <div className="streak-badge" style={{ marginBottom: 14 }}>
           <Flame size={14} color="var(--accent-estudos)" />
           {streak} dia{streak !== 1 ? 's' : ''} seguido{streak !== 1 ? 's' : ''} estudando
+        </div>
+      )}
+
+      {subjects.length > 0 && (
+        <div className="card accent-estudos" style={{ marginBottom: 16 }}>
+          <span className="page-comment">// pomodoro</span>
+          <PomodoroTimer subjects={subjects} onSessionComplete={logStudySession} />
         </div>
       )}
 
@@ -162,7 +182,7 @@ export default function Estudos() {
 
       {subjects.length > 0 && (
         <div className="card accent-estudos" style={{ marginTop: 16 }}>
-          <span className="page-comment">// registrar sessão</span>
+          <span className="page-comment">// registrar sessão manual</span>
           <div className="add-row">
             <select
               className="flex-1"
@@ -189,6 +209,11 @@ export default function Estudos() {
           </div>
         </div>
       )}
+
+      <div className="card accent-estudos" style={{ marginTop: 16 }}>
+        <span className="page-comment">// constância nos últimos meses</span>
+        <StudyHeatmap days={days} />
+      </div>
 
       {pieData.length > 0 && (
         <div className="card accent-estudos" style={{ marginTop: 16 }}>

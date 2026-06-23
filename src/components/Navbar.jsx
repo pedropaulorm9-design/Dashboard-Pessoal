@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { Calendar, Wallet, BookOpen, Sun, Moon, Menu, X, LogOut, Settings } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import Avatar from './Avatar';
 
 const links = [
   { to: '/agenda', label: 'Agenda', icon: Calendar, accent: 'agenda' },
@@ -12,7 +13,7 @@ const links = [
 
 export default function Navbar() {
   const { theme, toggleTheme } = useTheme();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -60,6 +61,9 @@ export default function Navbar() {
             aria-label="Configurações"
           >
             <Settings size={16} />
+          </NavLink>
+          <NavLink to="/configuracoes" aria-label="Seu perfil" style={{ display: 'flex' }}>
+            <Avatar user={user} size={32} />
           </NavLink>
           <button className="text-btn" onClick={handleLogout}>
             Sair

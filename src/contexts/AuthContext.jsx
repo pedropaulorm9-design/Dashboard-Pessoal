@@ -57,11 +57,6 @@ export function AuthProvider({ children }) {
     await refreshUser();
   }
 
-  async function updatePhotoURL(url) {
-    await updateProfile(auth.currentUser, { photoURL: url });
-    await refreshUser();
-  }
-
   async function changePassword(currentPassword, newPassword) {
     await reauthenticate(currentPassword);
     await updatePassword(auth.currentUser, newPassword);
@@ -82,7 +77,6 @@ export function AuthProvider({ children }) {
         logout,
         reauthenticate,
         updateDisplayName,
-        updatePhotoURL,
         changePassword,
         deleteAccountWithPassword,
       }}

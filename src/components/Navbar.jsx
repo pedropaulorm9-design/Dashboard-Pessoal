@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { Calendar, Wallet, BookOpen, Sun, Moon, Menu, X, LogOut, Settings } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useUserPreferences } from '../hooks/useUserPreferences';
 import Avatar from './Avatar';
 
 const links = [
@@ -14,8 +15,10 @@ const links = [
 export default function Navbar() {
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
+  const { preferences } = useUserPreferences(user.uid);
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const fallbackText = (user.displayName || user.email || '?').slice(0, 1).toUpperCase();
 
   async function handleLogout() {
     await logout();
@@ -63,7 +66,7 @@ export default function Navbar() {
             <Settings size={16} />
           </NavLink>
           <NavLink to="/configuracoes" aria-label="Seu perfil" style={{ display: 'flex' }}>
-            <Avatar user={user} size={32} />
+            <Avatar src={preferences.photoData} fallbackText={fallbackText} size={32} />
           </NavLink>
           <button className="text-btn" onClick={handleLogout}>
             Sair

@@ -879,17 +879,46 @@ a {
 .repeat-toggle {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 9px;
   font-size: 12px;
   color: var(--text-muted);
-  cursor: pointer;
-  user-select: none;
+  flex-wrap: wrap;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 9px 11px;
 }
 
-.repeat-toggle input {
+.repeat-toggle input[type='checkbox'] {
   accent-color: var(--accent-agenda);
   width: 15px;
   height: 15px;
+}
+
+.repeat-toggle select {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  padding: 7px 9px;
+  font-size: 12px;
+}
+
+.repeat-toggle-days {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.repeat-toggle-days input {
+  width: 56px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  padding: 7px 9px;
+  font-size: 12px;
+  text-align: center;
 }
 
 .edit-btn {

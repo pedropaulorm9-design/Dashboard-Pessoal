@@ -30,6 +30,32 @@ export function requestNotificationPermission() {
   });
 }
 
+/**
+ * Igual requestNotificationPermission, mas nunca fica esperando pra
+ * sempre — se o SDK do OneSignal não responder em alguns segundos
+ * (bloqueador de anúncio, conexão ruim, etc.), resolve com 'timeout'
+ * em vez de travar o botão pra sempre sem nenhum aviso.
+ */
+export function requestNotificationPermissionSafe(timeoutMs = 6000) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        resolve('timeout');
+      }
+    }, timeoutMs);
+
+    requestNotificationPermission().then((granted) => {
+      if (!settled) {
+        settled = true;
+        clearTimeout(timer);
+        resolve(granted);
+      }
+    });
+  });
+}
+
 export function getNotificationPermission() {
   return new Promise((resolve) => {
     window.OneSignalDeferred = window.OneSignalDeferred || [];

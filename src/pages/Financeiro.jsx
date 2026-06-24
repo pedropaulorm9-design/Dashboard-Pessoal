@@ -39,7 +39,7 @@ export default function Financeiro() {
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState(null);
 
-  const [newRecurring, setNewRecurring] = useState({ desc: '', value: '', type: 'saida', category: CATEGORIES[0], dayOfMonth: '1' });
+  const [newRecurring, setNewRecurring] = useState({ desc: '', value: '', type: 'saida', category: CATEGORIES[0], dayOfMonth: '1', budgetLimit: '' });
 
   const syncedRef = useRef(false);
 
@@ -62,12 +62,18 @@ export default function Financeiro() {
       if (r.lastGeneratedMonth === thisMonth) return;
       if (today.getDate() < r.dayOfMonth) return;
 
+      // Usa o dia marcado (não "hoje") — assim, mesmo abrindo o app
+      // atrasado, a movimentação aparece na data certa em que ela
+      // realmente "debita", e meio-dia evita qualquer problema de
+      // fuso horário empurrar pro dia anterior/seguinte.
+      const scheduledDate = new Date(today.getFullYear(), today.getMonth(), r.dayOfMonth, 12, 0, 0);
+
       addItem({
         desc: r.desc,
         value: r.value,
         type: r.type,
         category: r.category,
-        date: today.toISOString(),
+        date: scheduledDate.toISOString(),
         recurringTemplateId: r.id,
       });
       updateRecurring(r.id, { lastGeneratedMonth: thisMonth });
@@ -109,15 +115,17 @@ export default function Financeiro() {
     const value = parseFloat(newRecurring.value);
     const day = parseInt(newRecurring.dayOfMonth, 10);
     if (!newRecurring.desc.trim() || isNaN(value) || value <= 0 || isNaN(day) || day < 1 || day > 28) return;
+    const limit = parseFloat(newRecurring.budgetLimit);
     addRecurring({
       desc: newRecurring.desc.trim(),
       value,
       type: newRecurring.type,
       category: newRecurring.category,
       dayOfMonth: day,
+      budgetLimit: isNaN(limit) ? null : limit,
       lastGeneratedMonth: null,
     });
-    setNewRecurring({ desc: '', value: '', type: 'saida', category: CATEGORIES[0], dayOfMonth: '1' });
+    setNewRecurring({ desc: '', value: '', type: 'saida', category: CATEGORIES[0], dayOfMonth: '1', budgetLimit: '' });
   }
 
   // --- dados pros gráficos ---
@@ -186,6 +194,31 @@ export default function Financeiro() {
       return next;
     });
   }
+
+  const [recurringBudgetDrafts, setRecurringBudgetDrafts] = useState({});
+
+  function commitRecurringBudget(template) {
+    const draft = recurringBudgetDrafts[template.id];
+    if (draft === undefined) return;
+    const value = parseFloat(draft);
+    updateRecurring(template.id, { budgetLimit: isNaN(value) || value <= 0 ? null : value });
+    setRecurringBudgetDrafts((prev) => {
+      const next = { ...prev };
+      delete next[template.id];
+      return next;
+    });
+  }
+
+  // valor já lançado este mês pra cada transação fixa (pra comparar com a meta dela)
+  const thisMonthByTemplate = useMemo(() => {
+    const map = {};
+    transactions
+      .filter((t) => t.recurringTemplateId && isInMonthOffset(t.date, 0))
+      .forEach((t) => {
+        map[t.recurringTemplateId] = t.value;
+      });
+    return map;
+  }, [transactions]);
 
   // --- comparação de meses ---
   const thisMonthEntradas = transactions
@@ -435,23 +468,55 @@ export default function Financeiro() {
         <span className="page-comment">// transações fixas</span>
         <div className="list">
           {recurring.length === 0 && <div className="empty">Nenhuma transação fixa cadastrada.</div>}
-          {recurring.map((r) => (
-            <div className="item" key={r.id}>
-              <div className="item-body">
-                <div className="item-title">
-                  {r.desc}
-                  <Repeat size={11} className="recurrence-icon" />
+          {recurring.map((r) => {
+            const spentThisMonth = thisMonthByTemplate[r.id];
+            const limit = r.budgetLimit || null;
+            const over = limit && spentThisMonth && spentThisMonth > limit;
+            const draft = recurringBudgetDrafts[r.id] ?? (limit || '');
+            return (
+              <div className="subject-card" key={r.id}>
+                <div className="item">
+                  <div className="item-body">
+                    <div className="item-title">
+                      {r.desc}
+                      <Repeat size={11} className="recurrence-icon" />
+                    </div>
+                    <div className="item-tag">{r.category} · todo dia {r.dayOfMonth}</div>
+                  </div>
+                  <span className={`tx-value ${r.type}`}>
+                    {r.type === 'entrada' ? '+' : '−'} R$ {r.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </span>
+                  <button className="del-btn" onClick={() => removeRecurring(r.id)} aria-label="Remover transação fixa">
+                    <Trash2 size={14} />
+                  </button>
                 </div>
-                <div className="item-tag">{r.category} · todo dia {r.dayOfMonth}</div>
+                <div className="category-budget-top">
+                  <span className="item-tag" style={{ margin: 0 }}>
+                    Meta pra essa conta
+                  </span>
+                  <span className="goal-row">
+                    R$
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="sem meta"
+                      value={draft}
+                      onChange={(e) => setRecurringBudgetDrafts((prev) => ({ ...prev, [r.id]: e.target.value }))}
+                      onBlur={() => commitRecurringBudget(r)}
+                      onKeyDown={(e) => e.key === 'Enter' && commitRecurringBudget(r)}
+                    />
+                  </span>
+                </div>
+                {limit && spentThisMonth !== undefined && (
+                  <span className={over ? 'budget-warning' : 'item-tag'}>
+                    {over
+                      ? `Passou a meta: R$ ${spentThisMonth.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (meta era R$ ${limit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})`
+                      : `R$ ${spentThisMonth.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} de R$ ${limit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} este mês`}
+                  </span>
+                )}
               </div>
-              <span className={`tx-value ${r.type}`}>
-                {r.type === 'entrada' ? '+' : '−'} R$ {r.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-              </span>
-              <button className="del-btn" onClick={() => removeRecurring(r.id)} aria-label="Remover transação fixa">
-                <Trash2 size={14} />
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="add-row">
@@ -490,12 +555,21 @@ export default function Financeiro() {
             value={newRecurring.dayOfMonth}
             onChange={(e) => setNewRecurring({ ...newRecurring, dayOfMonth: e.target.value })}
           />
+          <input
+            className="w-value"
+            type="number"
+            min="0"
+            placeholder="meta (opc.)"
+            value={newRecurring.budgetLimit}
+            onChange={(e) => setNewRecurring({ ...newRecurring, budgetLimit: e.target.value })}
+          />
           <button className="add-btn" onClick={handleAddRecurring} aria-label="Adicionar transação fixa">
             <Plus size={15} />
           </button>
         </div>
         <p className="item-tag" style={{ margin: 0 }}>
-          Todo dia marcado do mês, ela é lançada automaticamente como uma movimentação normal.
+          Todo dia marcado do mês, ela é lançada automaticamente como uma movimentação normal — com a data certa em
+          que costuma debitar. A meta (opcional) avisa se o valor real daquele mês passar do limite.
         </p>
       </div>
 

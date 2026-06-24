@@ -7,7 +7,7 @@ import { db } from '../firebase';
 import { resizeImageToBase64 } from '../utils/resizeImage';
 import {
   getNotificationPermission,
-  requestNotificationPermission,
+  requestNotificationPermissionSafe,
   getOptedIn,
   setOptedIn,
 } from '../utils/notifications';
@@ -41,6 +41,7 @@ export default function Configuracoes() {
   const [notifPermission, setNotifPermission] = useState(null);
   const [notifEnabled, setNotifEnabled] = useState(false);
   const [notifBusy, setNotifBusy] = useState(false);
+  const [notifError, setNotifError] = useState('');
 
   useEffect(() => {
     getNotificationPermission().then(setNotifPermission);
@@ -48,12 +49,21 @@ export default function Configuracoes() {
   }, []);
 
   async function handleToggleNotifications() {
+    setNotifError('');
     setNotifBusy(true);
     try {
       if (!notifPermission) {
-        const granted = await requestNotificationPermission();
-        setNotifPermission(granted);
-        if (granted) setNotifEnabled(await getOptedIn());
+        const result = await requestNotificationPermissionSafe();
+        if (result === 'timeout') {
+          setNotifError('Não conseguimos falar com o serviço de notificações agora. Tente de novo em alguns segundos.');
+          return;
+        }
+        setNotifPermission(result);
+        if (!result) {
+          setNotifError('Seu navegador não liberou a notificação. Se já negou antes, permita manualmente nas configurações do navegador/celular para este site.');
+          return;
+        }
+        setNotifEnabled(await getOptedIn());
       } else {
         const next = await setOptedIn(!notifEnabled);
         setNotifEnabled(next);
@@ -273,9 +283,10 @@ export default function Configuracoes() {
           </span>
           <button className="btn btn-primary" onClick={handleToggleNotifications} disabled={notifBusy}>
             <Bell size={14} style={{ marginRight: 6, verticalAlign: 'text-bottom' }} />
-            {!notifPermission ? 'Ativar' : notifEnabled ? 'Desativar' : 'Reativar'}
+            {notifBusy ? 'Ativando...' : !notifPermission ? 'Ativar' : notifEnabled ? 'Desativar' : 'Reativar'}
           </button>
         </div>
+        {notifError && <span className="auth-error">{notifError}</span>}
       </div>
 
       {/* Preferências */}

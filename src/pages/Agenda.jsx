@@ -16,7 +16,7 @@ import {
 import { tagColor } from '../utils/tagColor';
 import {
   toOneSignalSendAfter,
-  requestNotificationPermission,
+  requestNotificationPermissionSafe,
   getNotificationPermission,
   scheduleTaskNotification,
   cancelTaskNotification,
@@ -50,6 +50,8 @@ export default function Agenda() {
   const [searchQuery, setSearchQuery] = useState('');
   const [newTask, setNewTask] = useState({ time: '', title: '', tag: '', repeatMode: 'none', intervalDays: '' });
   const [notifPermission, setNotifPermission] = useState(null);
+  const [notifBusy, setNotifBusy] = useState(false);
+  const [notifError, setNotifError] = useState('');
   const toppedUpRef = useRef(new Set());
 
   useEffect(() => {
@@ -57,8 +59,19 @@ export default function Agenda() {
   }, []);
 
   async function handleEnableNotifications() {
-    const granted = await requestNotificationPermission();
-    setNotifPermission(granted);
+    setNotifError('');
+    setNotifBusy(true);
+    const result = await requestNotificationPermissionSafe();
+    setNotifBusy(false);
+
+    if (result === 'timeout') {
+      setNotifError('Não conseguimos falar com o serviço de notificações agora. Verifique sua internet (ou se algum bloqueador de anúncio está travando o site) e tente de novo.');
+      return;
+    }
+    setNotifPermission(result);
+    if (!result) {
+      setNotifError('Seu navegador não liberou a notificação. Se você já negou antes, precisa permitir manualmente nas configurações de notificação do navegador/celular para este site.');
+    }
   }
 
   const tasksForDay = tasks
@@ -215,10 +228,11 @@ export default function Agenda() {
             <span className="item-tag" style={{ margin: 0 }}>
               Ative as notificações pra receber lembrete dos seus compromissos, mesmo com o app fechado.
             </span>
-            <button className="btn btn-primary" onClick={handleEnableNotifications}>
-              Ativar notificações
+            <button className="btn btn-primary" onClick={handleEnableNotifications} disabled={notifBusy}>
+              {notifBusy ? 'Ativando...' : 'Ativar notificações'}
             </button>
           </div>
+          {notifError && <span className="auth-error">{notifError}</span>}
         </div>
       )}
 
@@ -371,14 +385,17 @@ export default function Agenda() {
                 <option value="interval">A cada X dias</option>
               </select>
               {newTask.repeatMode === 'interval' && (
-                <input
-                  className="w-minutes"
-                  type="number"
-                  min="1"
-                  placeholder="dias"
-                  value={newTask.intervalDays}
-                  onChange={(e) => setNewTask({ ...newTask, intervalDays: e.target.value })}
-                />
+                <span className="repeat-toggle-days">
+                  a cada
+                  <input
+                    type="number"
+                    min="1"
+                    placeholder="3"
+                    value={newTask.intervalDays}
+                    onChange={(e) => setNewTask({ ...newTask, intervalDays: e.target.value })}
+                  />
+                  dias
+                </span>
               )}
             </div>
             {newTask.repeatMode !== 'none' && (

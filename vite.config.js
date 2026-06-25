@@ -38,6 +38,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,png,svg,ico}'],
+        globIgnores: ['OneSignalSDKWorker.js', 'OneSignalSDKUpdaterWorker.js'], // Sem o **/ no início para cravar na raiz
         navigateFallbackAllowlist: [/^(?!\/__).*/],
       },
     }),

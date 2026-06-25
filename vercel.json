@@ -1,16 +1,6 @@
 {
-  "headers": [
-    {
-      "source": "/(.*)Worker.js",
-      "headers": [
-        { "key": "Content-Type", "value": "application/javascript" },
-        { "key": "Service-Worker-Allowed", "value": "/" }
-      ]
-    }
-  ],
   "rewrites": [
-    { "source": "/OneSignalSDKWorker.js", "destination": "/OneSignalSDKWorker.js" },
-    { "source": "/OneSignalSDKUpdaterWorker.js", "destination": "/OneSignalSDKUpdaterWorker.js" },
+    { "source": "/onesignal/OneSignalSDKWorker.js", "destination": "/onesignal/OneSignalSDKWorker.js" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

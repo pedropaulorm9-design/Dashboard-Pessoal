@@ -17,8 +17,9 @@
   OneSignalDeferred.push(async function(OneSignal) {
     await OneSignal.init({
       appId: 'd05c9b18-eef1-401c-9d1f-72161cf0f6a9',
-      serviceWorkerPath: 'sw.js',        // <-- Altera para sw.js do PWA
-      serviceWorkerParam: { scope: '/' } // <-- Define o escopo correto
+      serviceWorkerPath: 'sw.js',
+      serviceWorkerParam: { scope: '/' },
+      disableRegister: true // 👈 IMPEDE O ONESIGNAL DE FORÇAR O ARQUIVO PRÓPRIO
     });
   });
 </script>

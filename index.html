@@ -17,8 +17,8 @@
   OneSignalDeferred.push(async function(OneSignal) {
     await OneSignal.init({
       appId: 'd05c9b18-eef1-401c-9d1f-72161cf0f6a9',
-      serviceWorkerPath: 'sw.js', // Indica para usar o SW integrado do Vite PWA
-      serviceWorkerParam: { scope: '/' }
+      serviceWorkerPath: 'sw.js',        // <-- Altera para sw.js do PWA
+      serviceWorkerParam: { scope: '/' } // <-- Define o escopo correto
     });
   });
 </script>

@@ -14,9 +14,11 @@
     <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 <script>
   window.OneSignalDeferred = window.OneSignalDeferred || [];
-  OneSignalDeferred.push(async function (OneSignal) {
+  OneSignalDeferred.push(async function(OneSignal) {
     await OneSignal.init({
       appId: 'd05c9b18-eef1-401c-9d1f-72161cf0f6a9',
+      serviceWorkerPath: 'sw.js', // <-- Força o OneSignal a usar o SW do seu PWA
+      serviceWorkerParam: { scope: '/' }
     });
   });
 </script>

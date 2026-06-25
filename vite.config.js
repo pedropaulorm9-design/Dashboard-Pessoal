@@ -38,9 +38,12 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,png,svg,ico}'],
-        // 👇 ADICIONE AS LINHAS ABAIXO DENTRO DO BLOCO WORKBOX 👇
         globIgnores: ['**/OneSignalSDKWorker.js', '**/OneSignalSDKUpdaterWorker.js'],
         navigateFallbackAllowlist: [/^(?!\/__).*(?!\/onesignal\/)/],
+        // 👇 ESTA É A LINHA QUE VAI FAZER A MÁGICA ABAIXO 👇
+        importScripts: [
+          'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.worker.js'
+        ],
       },
     }),
   ],

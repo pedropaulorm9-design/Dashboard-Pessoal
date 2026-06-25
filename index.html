@@ -11,13 +11,13 @@
     <meta name="apple-mobile-web-app-title" content="Painel PP" />
     <meta name="description" content="Painel pessoal de agenda, financeiro e estudos, sincronizado entre dispositivos." />
     <title>Painel PP</title>
-    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 <script>
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   OneSignalDeferred.push(async function(OneSignal) {
     await OneSignal.init({
       appId: 'd05c9b18-eef1-401c-9d1f-72161cf0f6a9',
-      serviceWorkerPath: 'sw.js', // <-- Força o OneSignal a usar o SW do seu PWA
+      serviceWorkerPath: 'sw.js', // Indica para usar o SW integrado do Vite PWA
       serviceWorkerParam: { scope: '/' }
     });
   });

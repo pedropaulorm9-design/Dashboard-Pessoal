@@ -11,3 +11,7 @@ export function tagColor(tag) {
   }
   return PALETTE[hash % PALETTE.length];
 }
+
+export function isImportantTag(tag) {
+  return Boolean(tag) && tag.toLowerCase().includes('importante');
+}

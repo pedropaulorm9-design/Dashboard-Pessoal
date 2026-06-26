@@ -13,7 +13,7 @@ import {
   recurrenceLabel,
   nextOccurrences,
 } from '../utils/recurrence';
-import { tagColor } from '../utils/tagColor';
+import { tagColor, isImportantTag } from '../utils/tagColor';
 import {
   toOneSignalSendAfter,
   requestNotificationPermissionSafe,
@@ -67,7 +67,22 @@ export default function Agenda() {
         bannerTimerRef.current = setTimeout(() => setShowNotifBanner(false), 6000);
       }
     });
-    return () => clearTimeout(bannerTimerRef.current);
+
+    // Revalida sempre que a aba volta a ficar visível — assim, se a
+    // permissão mudou por fora do nosso botão (ex: um prompt automático
+    // do próprio OneSignal, ou o usuário mudando nas configurações do
+    // navegador), o app não fica com um estado desatualizado.
+    function handleVisibility() {
+      if (document.visibilityState === 'visible') {
+        getNotificationPermission().then(setNotifPermission);
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearTimeout(bannerTimerRef.current);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, []);
 
   async function handleEnableNotifications() {
@@ -106,8 +121,9 @@ export default function Agenda() {
   // tarefas muda toda hora por causa do tempo real, então sem essa guarda
   // isso rodaria em loop).
   async function topUpRecurringNotifications(task) {
-    if (!notifPermission) return;
     if (!/^\d{1,2}:\d{2}$/.test(task.time)) return;
+    const livePermission = await getNotificationPermission();
+    if (!livePermission) return;
 
     const todayKey = toKey(new Date());
     const existing = task.notificationIds || {};
@@ -124,7 +140,7 @@ export default function Agenda() {
       if (target <= new Date()) continue;
 
       const id = await scheduleTaskNotification({
-        title: task.title,
+        title: isImportantTag(task.tag) ? `🔴 IMPORTANTE: ${task.title}` : task.title,
         message: `${task.time} · ${task.tag}`,
         sendAfter: toOneSignalSendAfter(dateKey, task.time),
       });
@@ -136,7 +152,6 @@ export default function Agenda() {
   }
 
   useEffect(() => {
-    if (notifPermission === null) return;
     tasks.forEach((t) => {
       if (t.recurrence && !toppedUpRef.current.has(t.id)) {
         toppedUpRef.current.add(t.id);
@@ -144,7 +159,7 @@ export default function Agenda() {
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks, notifPermission]);
+  }, [tasks]);
 
   async function handleAdd() {
     if (!newTask.title.trim()) return;
@@ -172,16 +187,21 @@ export default function Agenda() {
 
     let notificationId = null;
     const hasRealTime = /^\d{1,2}:\d{2}$/.test(base.time);
-    if (hasRealTime && notifPermission) {
-      const [h, m] = base.time.split(':').map(Number);
-      const target = new Date(selectedDate + 'T00:00:00');
-      target.setHours(h, m, 0, 0);
-      if (target > new Date()) {
-        notificationId = await scheduleTaskNotification({
-          title: base.title,
-          message: `${base.time} · ${base.tag}`,
-          sendAfter: toOneSignalSendAfter(selectedDate, base.time),
-        });
+    if (hasRealTime) {
+      const livePermission = await getNotificationPermission();
+      if (livePermission !== notifPermission) setNotifPermission(livePermission);
+
+      if (livePermission) {
+        const [h, m] = base.time.split(':').map(Number);
+        const target = new Date(selectedDate + 'T00:00:00');
+        target.setHours(h, m, 0, 0);
+        if (target > new Date()) {
+          notificationId = await scheduleTaskNotification({
+            title: isImportantTag(base.tag) ? `🔴 IMPORTANTE: ${base.title}` : base.title,
+            message: `${base.time} · ${base.tag}`,
+            sendAfter: toOneSignalSendAfter(selectedDate, base.time),
+          });
+        }
       }
     }
 

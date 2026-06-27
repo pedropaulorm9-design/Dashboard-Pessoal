@@ -66,6 +66,10 @@ export default function Configuracoes() {
         setNotifEnabled(await getOptedIn());
       } else {
         const next = await setOptedIn(!notifEnabled);
+        if (next === 'timeout') {
+          setNotifError('Não conseguimos falar com o serviço de notificações agora. Tente de novo em alguns segundos.');
+          return;
+        }
         setNotifEnabled(next);
       }
     } finally {

@@ -16,76 +16,81 @@ export function toOneSignalSendAfter(dateKey, time) {
   return `${year}-${pad(month)}-${pad(day)} ${pad(hour)}:${pad(minute)}:00 GMT${sign}${pad(Math.floor(abs / 60))}${pad(abs % 60)}`;
 }
 
-export function requestNotificationPermission() {
-  return new Promise((resolve) => {
-    window.OneSignalDeferred = window.OneSignalDeferred || [];
-    window.OneSignalDeferred.push(async (OneSignal) => {
-      try {
-        await OneSignal.Notifications.requestPermission();
-        resolve(OneSignal.Notifications.permission);
-      } catch {
-        resolve(false);
-      }
-    });
-  });
-}
-
 /**
- * Igual requestNotificationPermission, mas nunca fica esperando pra
- * sempre — se o SDK do OneSignal não responder em alguns segundos
- * (bloqueador de anúncio, conexão ruim, etc.), resolve com 'timeout'
- * em vez de travar o botão pra sempre sem nenhum aviso.
+ * Roda uma função que recebe o objeto OneSignal já carregado, mas nunca
+ * fica esperando pra sempre — se a fila do SDK não processar em alguns
+ * segundos (bloqueador de anúncio, SDK que falhou ao carregar, conexão
+ * ruim), resolve com `fallback` em vez de travar a tela pra sempre sem
+ * nenhum aviso. Todas as chamadas ao OneSignal nesse arquivo passam por
+ * aqui, já que qualquer uma delas pode sofrer do mesmo travamento.
  */
-export function requestNotificationPermissionSafe(timeoutMs = 6000) {
+function withOneSignal(callback, fallback, timeoutMs = 6000) {
   return new Promise((resolve) => {
     let settled = false;
     const timer = setTimeout(() => {
       if (!settled) {
         settled = true;
-        resolve('timeout');
+        resolve(fallback);
       }
     }, timeoutMs);
 
-    requestNotificationPermission().then((granted) => {
-      if (!settled) {
-        settled = true;
-        clearTimeout(timer);
-        resolve(granted);
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    window.OneSignalDeferred.push(async (OneSignal) => {
+      try {
+        const result = await callback(OneSignal);
+        if (!settled) {
+          settled = true;
+          clearTimeout(timer);
+          resolve(result);
+        }
+      } catch {
+        if (!settled) {
+          settled = true;
+          clearTimeout(timer);
+          resolve(fallback);
+        }
       }
     });
   });
+}
+
+export function requestNotificationPermission() {
+  return withOneSignal(async (OneSignal) => {
+    await OneSignal.Notifications.requestPermission();
+    return OneSignal.Notifications.permission;
+  }, false);
+}
+
+/**
+ * Igual requestNotificationPermission, mas devolve o texto 'timeout'
+ * (em vez de só `false`) quando quem travou foi a comunicação com o
+ * SDK — assim a tela consegue mostrar uma mensagem diferente de
+ * "permissão negada".
+ */
+export function requestNotificationPermissionSafe(timeoutMs = 6000) {
+  return withOneSignal(async (OneSignal) => {
+    await OneSignal.Notifications.requestPermission();
+    return OneSignal.Notifications.permission;
+  }, 'timeout', timeoutMs);
 }
 
 export function getNotificationPermission() {
-  return new Promise((resolve) => {
-    window.OneSignalDeferred = window.OneSignalDeferred || [];
-    window.OneSignalDeferred.push(async (OneSignal) => {
-      resolve(OneSignal.Notifications.permission);
-    });
-  });
+  return withOneSignal((OneSignal) => OneSignal.Notifications.permission, false);
 }
 
 export function getOptedIn() {
-  return new Promise((resolve) => {
-    window.OneSignalDeferred = window.OneSignalDeferred || [];
-    window.OneSignalDeferred.push(async (OneSignal) => {
-      resolve(Boolean(OneSignal.User.PushSubscription.optedIn));
-    });
-  });
+  return withOneSignal((OneSignal) => Boolean(OneSignal.User.PushSubscription.optedIn), false);
 }
 
 export function setOptedIn(enabled) {
-  return new Promise((resolve) => {
-    window.OneSignalDeferred = window.OneSignalDeferred || [];
-    window.OneSignalDeferred.push(async (OneSignal) => {
-      if (enabled) {
-        await OneSignal.User.PushSubscription.optIn();
-      } else {
-        await OneSignal.User.PushSubscription.optOut();
-      }
-      resolve(enabled);
-    });
-  });
+  return withOneSignal(async (OneSignal) => {
+    if (enabled) {
+      await OneSignal.User.PushSubscription.optIn();
+    } else {
+      await OneSignal.User.PushSubscription.optOut();
+    }
+    return enabled;
+  }, 'timeout');
 }
 
 export async function scheduleTaskNotification({ title, message, sendAfter }) {

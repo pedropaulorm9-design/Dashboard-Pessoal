@@ -8,7 +8,7 @@ export default defineConfig([
   globalIgnores(['dist', 'public']),
   {
     files: ['**/*.{js,jsx}'],
-    ignores: ['api/**', 'src/sw.js'],
+    ignores: ['api/**', 'src/OneSignalSDKWorker.js'],
     extends: [
       js.configs.recommended,
       reactHooks.configs.flat.recommended,
@@ -27,7 +27,7 @@ export default defineConfig([
     },
   },
   {
-    files: ['src/sw.js'],
+    files: ['src/OneSignalSDKWorker.js'],
     extends: [js.configs.recommended],
     languageOptions: {
       globals: globals.serviceworker,
